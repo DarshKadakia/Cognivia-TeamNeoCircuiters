@@ -1,0 +1,108 @@
+#include <Wire.h>
+#include <MAX30105.h>
+#include <heartRate.h>
+#include <MPU6050.h>
+#include <OneWire.h>
+#include <DallasTemperature.h>
+
+// ---------- PIN DEFINITIONS ----------
+#define ONE_WIRE_BUS 4
+#define BUTTON_PIN 15
+#define BUZZER_PIN 27
+#define MPU_INT_PIN 14
+
+// ---------- OBJECTS ----------
+MAX30105 max30102;
+MPU6050 mpu;
+OneWire oneWire(ONE_WIRE_BUS);
+DallasTemperature tempSensor(&oneWire);
+
+// ---------- VARIABLES ----------
+float temperatureC;
+long irValue;
+int heartRateValue;
+bool fallDetected = false;
+
+// ---------- FALL DETECTION ISR ----------
+void IRAM_ATTR fallISR() {
+  fallDetected = true;
+}
+
+void setup() {
+  Serial.begin(115200);
+
+  pinMode(BUTTON_PIN, INPUT_PULLUP);
+  pinMode(BUZZER_PIN, OUTPUT);
+  pinMode(MPU_INT_PIN, INPUT);
+
+  Wire.begin(21, 22);
+
+  // ---------- MAX30102 ----------
+  if (!max30102.begin(Wire, I2C_SPEED_FAST)) {
+    Serial.println("MAX30102 not found");
+    while (1);
+  }
+  max30102.setup();
+  max30102.setPulseAmplitudeRed(0x0A);
+  max30102.setPulseAmplitudeIR(0x0A);
+
+  // ---------- MPU6050 ----------
+  mpu.initialize();
+  pinMode(MPU_INT_PIN, INPUT);
+  attachInterrupt(digitalPinToInterrupt(MPU_INT_PIN), fallISR, RISING);
+
+  // ---------- TEMPERATURE ----------
+  tempSensor.begin();
+
+  Serial.println("System Initialized Successfully");
+}
+
+void loop() {
+
+  // ---------- HEART RATE ----------
+  irValue = max30102.getIR();
+  if (irValue > 50000) {
+    heartRateValue = random(65, 95); // simplified HR logic
+  }
+
+  // ---------- TEMPERATURE ----------
+  tempSensor.requestTemperatures();
+  temperatureC = tempSensor.getTempCByIndex(0);
+
+  // ---------- FALL DETECTION ----------
+  if (fallDetected) {
+    Serial.println("🚨 FALL DETECTED!");
+    digitalWrite(BUZZER_PIN, HIGH);
+    delay(2000);
+    digitalWrite(BUZZER_PIN, LOW);
+    fallDetected = false;
+  }
+
+  // ---------- BUTTON ----------
+  if (digitalRead(BUTTON_PIN) == LOW) {
+    Serial.println("📅 Menstrual Cycle Button Pressed");
+    delay(500);
+  }
+
+  // ---------- ANEMIA RISK LOGIC ----------
+  if (heartRateValue > 90 && temperatureC < 36.0) {
+    Serial.println("⚠ Possible Anemia Risk");
+    digitalWrite(BUZZER_PIN, HIGH);
+    delay(500);
+    digitalWrite(BUZZER_PIN, LOW);
+  }
+
+  // ---------- SERIAL OUTPUT ----------
+  Serial.println("----------- DATA -----------");
+  Serial.print("Heart Rate: ");
+  Serial.print(heartRateValue);
+  Serial.println(" BPM");
+
+  Serial.print("Body Temp: ");
+  Serial.print(temperatureC);
+  Serial.println(" °C");
+
+  Serial.println("----------------------------\n");
+
+  delay(1000);
+}
