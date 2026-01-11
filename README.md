@@ -4,7 +4,6 @@ Official Repo For Cognivia - Team NeoCircuiters
 <p align="center">
   <img src="https://img.shields.io/badge/ESP32-IoT-blue?style=for-the-badge"/>
   <img src="https://img.shields.io/badge/Healthcare-Wearable-red?style=for-the-badge"/>
-  <img src="https://img.shields.io/badge/Hackathon-Ready-green?style=for-the-badge"/>
 </p>
 
 <h1 align="center">🩺 Smart Health & Safety Monitoring Wearable</h1>
